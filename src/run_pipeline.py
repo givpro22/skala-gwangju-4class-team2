@@ -61,7 +61,7 @@ def run(force_download: bool = False, test_size: float = 0.2) -> dict[str, Any]:
     """
     ensure_dirs()
     started = time.perf_counter()
-    context: dict[str, Any] = {"generated_at": report.now_string()}
+    context: dict[str, Any] = {}
 
     # --- [1] Extract : 원본 수집 -----------------------------------
     logger.info("=" * 60)
@@ -70,8 +70,12 @@ def run(force_download: bool = False, test_size: float = 0.2) -> dict[str, Any]:
 
     # --- [2] Load & Compare : Pandas vs Polars ---------------------
     logger.info("[2/6] Pandas / Polars 로딩 및 비교")
-    pdf, t_pandas = clean.load_with_pandas(raw_path)
-    pldf, t_polars = clean.load_with_polars(raw_path)
+    pdf, _ = clean.load_with_pandas(raw_path)
+    pldf, _ = clean.load_with_polars(raw_path)
+
+    # 로딩 시간은 1회 측정이 불안정하므로(첫 호출에 초기화 비용이 섞임)
+    # 예열 후 반복 측정한 중앙값을 비교에 사용한다.
+    t_pandas, t_polars = clean.benchmark_loaders(raw_path)
     context["load_compare"] = clean.compare_loaders(pdf, pldf, t_pandas, t_polars)
 
     # --- [3] Transform : EDA + 결측/중복 처리 -----------------------

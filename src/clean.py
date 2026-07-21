@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import statistics
 import time
 import urllib.error
 import urllib.request
@@ -94,7 +95,7 @@ def load_with_pandas(path=RAW_FILE) -> tuple[pd.DataFrame, float]:
         skip_blank_lines=True,
     )
     elapsed = time.perf_counter() - start
-    logger.info("Pandas 로딩 완료: shape=%s, %.3f초", df.shape, elapsed)
+    logger.debug("Pandas 로딩 완료: shape=%s, %.3f초", df.shape, elapsed)
     return df, elapsed
 
 
@@ -129,8 +130,48 @@ def load_with_polars(path=RAW_FILE) -> tuple[pl.DataFrame, float]:
         .collect()
     )
     elapsed = time.perf_counter() - start
-    logger.info("Polars 로딩 완료: shape=%s, %.3f초", df.shape, elapsed)
+    logger.debug("Polars 로딩 완료: shape=%s, %.3f초", df.shape, elapsed)
     return df, elapsed
+
+
+def benchmark_loaders(
+    path=RAW_FILE, repeat: int = 10, warmup: int = 2
+) -> tuple[float, float]:
+    """두 로더의 로딩 시간을 반복 측정해 (Pandas 중앙값, Polars 중앙값) 을 반환한다.
+
+    1회만 재면 Polars 첫 호출에 스레드 풀 초기화 비용이 통째로 섞여 들어가
+    실행할 때마다 두 도구의 우열이 뒤바뀐다. 그래서
+      - 앞 `warmup` 회는 초기화 비용을 털어내는 용도로 버리고
+      - 나머지 `repeat` 회의 중앙값을 사용한다 (평균은 이상치에 흔들림)
+
+    Args:
+        path: 측정 대상 원본 경로.
+        repeat: 중앙값 계산에 사용할 측정 횟수.
+        warmup: 버릴 예열 횟수.
+
+    Returns:
+        (Pandas 중앙값 초, Polars 중앙값 초)
+    """
+    pandas_times: list[float] = []
+    polars_times: list[float] = []
+
+    for i in range(warmup + repeat):
+        _, t_pd = load_with_pandas(path)
+        _, t_pl = load_with_polars(path)
+        if i >= warmup:
+            pandas_times.append(t_pd)
+            polars_times.append(t_pl)
+
+    med_pandas = statistics.median(pandas_times)
+    med_polars = statistics.median(polars_times)
+    logger.info(
+        "로딩 벤치마크 | 예열 %d회 후 %d회 중앙값 — Pandas %.4fs, Polars %.4fs",
+        warmup,
+        repeat,
+        med_pandas,
+        med_polars,
+    )
+    return med_pandas, med_polars
 
 
 def compare_loaders(

@@ -11,7 +11,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 import pandas as pd
@@ -49,7 +48,6 @@ def build_report(context: dict[str, Any]) -> str:
     # ---------- 헤더 ----------
     add("# Adult Census Income 분석 리포트")
     add("")
-    add(f"- 생성 일시: {context['generated_at']}")
     add("- 작성: SKALA 광주 캠퍼스 4반 2조 / 박영서")
     add(f"- 데이터 출처: {DATA_URL}")
     add(f"- 총 실행 시간: {context['elapsed_sec']:.2f}초")
@@ -69,14 +67,16 @@ def build_report(context: dict[str, Any]) -> str:
     same = "동일" if load["shape_equal"] and load["nulls_equal"] else "불일치"
     speed = load["speedup"]  # Pandas 시간 / Polars 시간
     add(f"- 두 도구의 로딩 결과(행·열 수, 결측치 총계)는 **{same}**합니다.")
+    add(
+        "- 측정 방법: 로딩 1회만 재면 Polars 첫 호출에 스레드 풀 초기화 비용이 섞여 "
+        "실행할 때마다 우열이 뒤바뀝니다. 예열 2회를 버린 뒤 10회를 측정해 "
+        "**중앙값**을 사용했습니다."
+    )
     if speed and speed >= 1:
-        add(f"- 로딩 속도: Polars(Lazy API)가 Pandas 대비 약 **{speed}배** 빠름.")
+        add(f"- 로딩 속도: **Polars(Lazy API)가 Pandas 대비 약 {speed}배 빠름.**")
     else:
         add(
-            f"- 로딩 속도: 이번 실행에서는 Pandas가 약 **{1 / speed:.2f}배** 빨랐습니다. "
-            "데이터가 약 3.8MB로 작아 Polars의 멀티스레드·쿼리 최적화 이점보다 "
-            "초기화 비용과 공백 제거·결측 변환 등 추가 연산 비용이 더 컸기 때문이며, "
-            "수백만 행 이상에서는 Polars가 유리해집니다."
+            f"- 로딩 속도: 이번 측정에서는 Pandas가 약 **{1 / speed:.2f}배** 빨랐습니다."
         )
     add("")
 
@@ -237,8 +237,3 @@ def write_report(context: dict[str, Any], path=REPORT_PATH):
 
     logger.info("리포트 생성 완료: %s (%d줄)", path, content.count("\n") + 1)
     return path
-
-
-def now_string() -> str:
-    """리포트 헤더에 넣을 현재 시각 문자열을 반환한다."""
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
