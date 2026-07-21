@@ -105,17 +105,20 @@ def run_pipeline() -> None:
         "metrics": result["metrics"],
         "confusion_matrix": result["confusion_matrix"],
         "classification_report": result["classification_report"],
+        "coef_df": result["coef_df"],
         "coef_md": report.df_to_markdown(result["coef_df"], show_index=False),
         "n_train": result["n_train"],
         "n_test": result["n_test"],
         "artifacts": {
             "전처리 완료 데이터": PROCESSED_DIR / "adult_clean.csv",
             "학습된 모델": model_path,
-            "Seaborn: income vs hours_per_week boxplot": boxplot_path,
-            "Seaborn: 상관관계 heatmap": heatmap_path,
-            "Plotly: education별 고소득 비율": edu_html_path,
-            "Plotly: marital_status별 고소득 비율": marital_html_path,
         },
+        "figures": [
+            {"name": "Seaborn: income vs hours_per_week boxplot", "path": boxplot_path, "type": "image"},
+            {"name": "Seaborn: 상관관계 heatmap", "path": heatmap_path, "type": "image"},
+            {"name": "Plotly: education별 고소득 비율", "path": edu_html_path, "type": "html"},
+            {"name": "Plotly: marital_status별 고소득 비율", "path": marital_html_path, "type": "html"},
+        ],
     }
     report_path = report.generate_report(context, OUTPUTS_DIR / "report.md")
     logger.info("[6/6] 리포트 생성 완료")
