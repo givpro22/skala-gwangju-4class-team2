@@ -2,6 +2,7 @@ from src.data_loader.dataframe_loader import load_dataframes_from_url
 from src.data_loader.eda import run_basic_eda
 from src.data_loader.eda import run_pandas_eda
 from src.data_loader.eda import run_polars_eda
+from src.data_loader.ml_pipeline import train_evaluate_save_model
 from src.data_loader.preprocessing import clean_dataframes
 from src.data_loader.preprocessing import clean_pandas_dataframe
 from src.data_loader.preprocessing import clean_polars_dataframe
@@ -21,4 +22,5 @@ __all__ = [
     "run_pandas_eda",
     "run_polars_eda",
     "run_statistical_analysis",
+    "train_evaluate_save_model",
 ]

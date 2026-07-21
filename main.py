@@ -10,6 +10,7 @@ from src.data_loader import (
     load_dataframes_from_url,
     run_basic_eda,
     run_statistical_analysis,
+    train_evaluate_save_model,
 )
 
 
@@ -61,6 +62,7 @@ if pandas_df is not None and polars_df is not None:
 
     run_basic_eda(pandas_df, polars_df)
     run_statistical_analysis(pandas_df)
+    train_evaluate_save_model(pandas_df)
     create_visualizations(pandas_df)
 else:
     print("데이터를 불러오지 못했습니다.")
