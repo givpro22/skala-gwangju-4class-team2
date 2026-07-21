@@ -81,9 +81,12 @@ def run(force_download: bool = False, test_size: float = 0.2) -> dict[str, Any]:
     # --- [3] Transform : EDA + 결측/중복 처리 -----------------------
     logger.info("[3/6] 기본 EDA 및 전처리")
     context["eda"] = clean.basic_eda(pdf)
+    context["cat_profile"] = clean.categorical_profile(pdf)
     df_clean, history = clean.clean_data(pdf)
     context["clean_history"] = history
     context["clean_rows"] = len(df_clean)
+    # 최빈값 대체가 분포를 얼마나 바꿨는지 기록 (대체 전략의 부작용 확인용)
+    context["impute_impact"] = clean.imputation_impact(pdf, df_clean)
     context["processed_path"] = str(clean.save_processed(df_clean))
 
     # --- [4] Visualize : Seaborn + Plotly --------------------------

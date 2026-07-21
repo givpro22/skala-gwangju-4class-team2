@@ -233,6 +233,79 @@ def basic_eda(df: pd.DataFrame) -> dict[str, Any]:
     return eda
 
 
+def categorical_profile(df: pd.DataFrame, top_n: int = 3) -> list[dict[str, Any]]:
+    """범주형 컬럼별 고유값 수와 상위 빈도 값을 정리해 반환한다.
+
+    최빈값 대체를 쓰기 전에 "그 최빈값이 얼마나 지배적인지"를 봐야 한다.
+    최빈값 비율이 90%를 넘는 컬럼과 13% 수준인 컬럼은
+    같은 대체 전략이라도 분포에 주는 영향이 전혀 다르기 때문이다.
+
+    Args:
+        df: 대상 DataFrame.
+        top_n: 컬럼마다 보여줄 상위 값 개수.
+
+    Returns:
+        [{column, n_unique, top: [(값, 비율%), ...]}, ...]
+    """
+    profile: list[dict[str, Any]] = []
+    for col in df.select_dtypes(include="object").columns:
+        counts = df[col].value_counts(dropna=True)
+        total = int(counts.sum())
+        profile.append(
+            {
+                "column": col,
+                "n_unique": int(df[col].nunique(dropna=True)),
+                "top": [
+                    (str(v), round(c / total * 100, 2))
+                    for v, c in counts.head(top_n).items()
+                ],
+            }
+        )
+    logger.info("범주형 프로파일 산출: %d개 컬럼", len(profile))
+    return profile
+
+
+def imputation_impact(raw: pd.DataFrame, filled: pd.DataFrame) -> list[dict[str, Any]]:
+    """최빈값 대체가 각 컬럼의 분포를 얼마나 바꿨는지 계산한다.
+
+    대체 전 비율은 결측을 제외한 값들 중 최빈값이 차지하는 비율,
+    대체 후 비율은 전체 행 중 최빈값이 차지하는 비율이다.
+    두 값의 차이가 대체로 인해 부풀려진 정도가 된다.
+
+    Returns:
+        [{column, mode, n_filled, before_pct, after_pct, delta_pp}, ...]
+        (결측이 있었던 컬럼만 포함)
+    """
+    impact: list[dict[str, Any]] = []
+    for col in raw.select_dtypes(include="object").columns:
+        n_missing = int(raw[col].isna().sum())
+        if n_missing == 0 or col not in filled.columns:
+            continue
+        mode = raw[col].mode(dropna=True)[0]
+        before = (raw[col] == mode).sum() / raw[col].notna().sum() * 100
+        after = (filled[col] == mode).sum() / len(filled) * 100
+        impact.append(
+            {
+                "column": col,
+                "mode": str(mode),
+                "n_filled": n_missing,
+                "before_pct": round(before, 2),
+                "after_pct": round(after, 2),
+                "delta_pp": round(after - before, 2),
+            }
+        )
+    for row in impact:
+        logger.info(
+            "대체 영향 | %s: 최빈값 '%s' %.2f%% → %.2f%% (+%.2f%%p)",
+            row["column"],
+            row["mode"],
+            row["before_pct"],
+            row["after_pct"],
+            row["delta_pp"],
+        )
+    return impact
+
+
 def clean_data(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, int]]:
     """결측치와 중복을 처리한 DataFrame과 처리 이력을 반환한다.
 

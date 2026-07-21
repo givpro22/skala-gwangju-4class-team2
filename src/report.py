@@ -98,6 +98,21 @@ def build_report(context: dict[str, Any]) -> str:
         add("- 결측치 없음")
         add("")
 
+    # 범주형 분포 — 최빈값 대체의 타당성을 판단하는 근거
+    if context.get("cat_profile"):
+        add("### 범주형 변수 분포 (상위 3개)")
+        add("")
+        add("| 컬럼 | 고유값 수 | 1위 | 2위 | 3위 |")
+        add("| --- | ---: | --- | --- | --- |")
+        for row in context["cat_profile"]:
+            cells = [f"{v} ({p}%)" for v, p in row["top"]]
+            cells += [""] * (3 - len(cells))
+            add(
+                f"| {row['column']} | {row['n_unique']} | "
+                f"{cells[0]} | {cells[1]} | {cells[2]} |"
+            )
+        add("")
+
     add("### 전처리 이력")
     add("")
     add(f"- 중복 제거: {clean_hist['dropped_duplicates']}행")
@@ -105,6 +120,32 @@ def build_report(context: dict[str, Any]) -> str:
     add(f"- 수치형 결측치 중앙값 대체: {clean_hist['filled_numeric']}건")
     add(f"- 전처리 후 규모: **{context['clean_rows']:,}행**")
     add("")
+
+    # 대체 전략의 부작용 — 최빈값이 지배적이지 않은 컬럼일수록 왜곡이 크다
+    if context.get("impute_impact"):
+        add("### 최빈값 대체가 분포에 준 영향")
+        add("")
+        add("| 컬럼 | 최빈값 | 대체 건수 | 대체 전 | 대체 후 | 증가폭 |")
+        add("| --- | --- | ---: | ---: | ---: | ---: |")
+        for row in context["impute_impact"]:
+            add(
+                f"| {row['column']} | {row['mode']} | {row['n_filled']:,} | "
+                f"{row['before_pct']}% | {row['after_pct']}% | "
+                f"+{row['delta_pp']}%p |"
+            )
+        add("")
+        worst = max(context["impute_impact"], key=lambda r: r["delta_pp"])
+        add(
+            f"- 같은 최빈값 대체라도 컬럼에 따라 영향이 크게 다릅니다. "
+            f"`{worst['column']}`은 최빈값 비율이 {worst['before_pct']}%로 낮아 "
+            f"대체 후 **+{worst['delta_pp']}%p** 부풀려진 반면, "
+            "이미 한 범주가 지배적인 컬럼은 거의 변하지 않았습니다."
+        )
+        add(
+            "- 최빈값이 지배적이지 않은 컬럼에는 별도 범주(`Unknown`)로 "
+            "두거나 결측 자체를 정보로 쓰는 방식이 더 적절할 수 있습니다."
+        )
+        add("")
 
     add("### 타깃 분포")
     add("")

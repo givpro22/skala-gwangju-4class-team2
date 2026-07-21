@@ -2,7 +2,7 @@
 
 - 작성: SKALA 광주 캠퍼스 4반 2조 / 박영서
 - 데이터 출처: https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data
-- 총 실행 시간: 1.80초
+- 총 실행 시간: 1.85초
 
 > 이 문서는 `python -m src.run_pipeline` 실행 시 자동 생성됩니다.
 
@@ -12,11 +12,11 @@
 | --- | --- | --- |
 | shape | (32561, 15) | (32561, 15) |
 | 결측치 총계 | 4,262 | 4,262 |
-| 로딩 시간(초) | 0.0155 | 0.006 |
+| 로딩 시간(초) | 0.0151 | 0.0059 |
 
 - 두 도구의 로딩 결과(행·열 수, 결측치 총계)는 **동일**합니다.
 - 측정 방법: 로딩 1회만 재면 Polars 첫 호출에 스레드 풀 초기화 비용이 섞여 실행할 때마다 우열이 뒤바뀝니다. 예열 2회를 버린 뒤 10회를 측정해 **중앙값**을 사용했습니다.
-- 로딩 속도: **Polars(Lazy API)가 Pandas 대비 약 2.58배 빠름.**
+- 로딩 속도: **Polars(Lazy API)가 Pandas 대비 약 2.55배 빠름.**
 
 ## 2. 기본 EDA
 
@@ -31,12 +31,37 @@
 | occupation | 1,843 | 5.66 |
 | native-country | 583 | 1.79 |
 
+### 범주형 변수 분포 (상위 3개)
+
+| 컬럼 | 고유값 수 | 1위 | 2위 | 3위 |
+| --- | ---: | --- | --- | --- |
+| workclass | 8 | Private (73.87%) | Self-emp-not-inc (8.27%) | Local-gov (6.81%) |
+| education | 16 | HS-grad (32.25%) | Some-college (22.39%) | Bachelors (16.45%) |
+| marital-status | 7 | Married-civ-spouse (45.99%) | Never-married (32.81%) | Divorced (13.65%) |
+| occupation | 14 | Prof-specialty (13.48%) | Craft-repair (13.34%) | Exec-managerial (13.24%) |
+| relationship | 6 | Husband (40.52%) | Not-in-family (25.51%) | Own-child (15.56%) |
+| race | 5 | White (85.43%) | Black (9.59%) | Asian-Pac-Islander (3.19%) |
+| sex | 2 | Male (66.92%) | Female (33.08%) |  |
+| native-country | 41 | United-States (91.22%) | Mexico (2.01%) | Philippines (0.62%) |
+| income | 2 | <=50K (75.92%) | >50K (24.08%) |  |
+
 ### 전처리 이력
 
 - 중복 제거: 24행
 - 범주형 결측치 최빈값 대체: 4261건
 - 수치형 결측치 중앙값 대체: 0건
 - 전처리 후 규모: **32,537행**
+
+### 최빈값 대체가 분포에 준 영향
+
+| 컬럼 | 최빈값 | 대체 건수 | 대체 전 | 대체 후 | 증가폭 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| workclass | Private | 1,836 | 73.87% | 75.33% | +1.46%p |
+| occupation | Prof-specialty | 1,843 | 13.48% | 18.38% | +4.9%p |
+| native-country | United-States | 583 | 91.22% | 91.39% | +0.17%p |
+
+- 같은 최빈값 대체라도 컬럼에 따라 영향이 크게 다릅니다. `occupation`은 최빈값 비율이 13.48%로 낮아 대체 후 **+4.9%p** 부풀려진 반면, 이미 한 범주가 지배적인 컬럼은 거의 변하지 않았습니다.
+- 최빈값이 지배적이지 않은 컬럼에는 별도 범주(`Unknown`)로 두거나 결측 자체를 정보로 쓰는 방식이 더 적절할 수 있습니다.
 
 ### 타깃 분포
 
