@@ -35,6 +35,7 @@ def generate_report(context: dict, out_path: Path) -> Path:
     # 2. 전처리 요약
     clean = context["clean_summary"]
     lines.append("## 2. 전처리 요약\n")
+    lines.append("- 결측치 토큰(' ?') → NaN 변환 후 결측 비율 계산")
     lines.append(
         f"- 결측치가 있는 행: {clean['rows_with_missing']}/{clean['rows_before_dropna']} "
         f"(비율 {clean['missing_ratio']:.2%}) → 결측 비율이 낮아 해당 행을 dropna로 제거"

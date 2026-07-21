@@ -17,9 +17,6 @@ COLUMNS = [
     "capital_gain", "capital_loss", "hours_per_week", "native_country", "income",
 ]
 
-# 원본 CSV는 결측치를 공백을 포함한 ' ?' 문자열로 표기한다.
-MISSING_TOKEN = " ?"
-
 
 def fetch_raw_data(raw_dir: Path, url: str = DATA_URL) -> Path:
     """원본 데이터를 다운로드하여 data/raw/adult.data 로 저장한다.
@@ -46,7 +43,6 @@ def load_with_pandas(raw_path: Path) -> tuple[pd.DataFrame, float]:
         raw_path,
         header=None,
         names=COLUMNS,
-        na_values=MISSING_TOKEN,
         skipinitialspace=False,
     )
     elapsed = time.perf_counter() - start
@@ -62,7 +58,6 @@ def load_with_polars(raw_path: Path) -> tuple[pl.DataFrame, float]:
         raw_path,
         has_header=False,
         new_columns=COLUMNS,
-        null_values=MISSING_TOKEN,
         infer_schema_length=10000,
     )
     elapsed = time.perf_counter() - start
@@ -87,7 +82,7 @@ def compare_pandas_polars(
     logger.info("Pandas  : %.4fs, shape=%s", pd_time, pdf.shape)
     logger.info("Polars  : %.4fs, shape=%s", pl_time, pldf.shape)
     faster = "Polars" if pl_time < pd_time else "Pandas"
-    logger.info("이번 실행에서는 %s 가 더 빠르게 로딩했다.", faster)
+    logger.info("비교 결과 : %s 가 더 빠르게 로딩", faster)
 
     notes = []
     if pdf.shape[0] != pldf.shape[0]:

@@ -2,7 +2,7 @@
 
 파이프라인 작업 플로우 요약
 1. 데이터 수집/로딩: UCI adult.data 다운로드 후 Pandas/Polars로 각각 로딩하여 성능·타입 비교
-2. 전처리(clean): 결측치 dropna, 중복 제거, 문자열 strip, target(income) 0/1 이진화 -> processed CSV 저장
+2. 전처리(clean): 결측치 토큰(' ?') -> NaN 변환 및 dropna, 중복 제거, 문자열 strip, target(income) 0/1 이진화 -> processed CSV 저장
 3. 통계 분석(stats): 기술통계·상관분석 + 가설 H1(근무시간), H2(교육수준), H4(혼인/관계) 검정
 4. 시각화(visualize): Seaborn 정적 차트(boxplot, heatmap) + Plotly 인터랙티브 차트(education/marital_status) 생성
 5. ML 파이프라인(model): train/test 분할 -> 로지스틱 회귀 학습 -> 평가지표 산출 -> 계수 추출
@@ -44,8 +44,6 @@ def run_pipeline() -> None:
 
     # 이후 분석은 Pandas DataFrame 기준으로 진행
     logger.info("기본 EDA (전처리 전): shape=%s", pdf.shape)
-    na_counts = pdf.isna().sum()
-    logger.info("결측치 개수:\n%s", na_counts[na_counts > 0])
 
     # 2. 전처리
     logger.info(SEPARATOR)

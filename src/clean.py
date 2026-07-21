@@ -5,21 +5,28 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+# 원본 CSV는 결측치를 공백을 포함한 ' ?' 문자열로 표기한다.
+MISSING_TOKEN = " ?"
+
 
 def clean_data(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     """표준 전처리를 수행하고 (정제된 DataFrame, 전처리 요약 dict)를 반환한다.
 
     수행 순서:
-        1. 결측 비율 계산 (na_values 처리는 로딩 단계에서 이미 완료된 상태)
-        2. 결측치가 있는 행 제거 (결측 비율이 낮으므로 dropna로 처리)
-        3. 중복 행 제거
-        4. 문자열 컬럼 앞뒤 공백 strip
-        5. target(income) 을 0/1 로 변환
+        1. 결측치 토큰(' ?') -> NaN 변환
+        2. 결측 비율 계산
+        3. 결측치가 있는 행 제거 (결측 비율이 낮으므로 dropna로 처리)
+        4. 중복 행 제거
+        5. 문자열 컬럼 앞뒤 공백 strip
+        6. target(income) 을 0/1 로 변환
     """
     logger.info("전처리 시작: 입력 shape=%s", df.shape)
     summary: dict = {}
 
-    # 1) 결측 비율 계산: 낮은 비율(약 7%)이므로 삭제(dropna) 전략을 선택
+    # 1) 결측치 토큰(' ?') -> NaN 변환 (로딩 단계에서는 원본 그대로 유지)
+    df = df.replace(MISSING_TOKEN, pd.NA)
+
+    # 2) 결측 비율 계산: 낮은 비율(약 7%)이므로 삭제(dropna) 전략을 선택
     n_rows_before_na = len(df)
     rows_with_na = df.isna().any(axis=1).sum()
     missing_ratio = rows_with_na / n_rows_before_na
@@ -35,7 +42,7 @@ def clean_data(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     summary["rows_after_dropna"] = len(df)
     logger.info("dropna 완료: 남은 행=%d", len(df))
 
-    # 2) 중복 행 제거 (제거 전후 행 수 기록)
+    # 3) 중복 행 제거 (제거 전후 행 수 기록)
     n_before_dedup = len(df)
     df = df.drop_duplicates().reset_index(drop=True)
     summary["rows_before_dedup"] = n_before_dedup
@@ -46,13 +53,13 @@ def clean_data(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         n_before_dedup, len(df), summary["duplicates_removed"],
     )
 
-    # 3) 문자열 컬럼 앞뒤 공백 제거 (CSV 원본이 ", " 로 구분되어 값 앞에 공백이 남아있음)
+    # 4) 문자열 컬럼 앞뒤 공백 제거 (CSV 원본이 ", " 로 구분되어 값 앞에 공백이 남아있음)
     str_cols = df.select_dtypes(include="object").columns
     logger.info("문자열 컬럼 strip 처리: %s", list(str_cols))
     for col in str_cols:
         df[col] = df[col].str.strip()
 
-    # 4) target 변환: income -> 0(<=50K) / 1(>50K)
+    # 5) target 변환: income -> 0(<=50K) / 1(>50K)
     df["income"] = df["income"].str.rstrip(".")  # 방어적 처리(.test 파일 형식 대비)
     df["income"] = (df["income"] == ">50K").astype(int)
     logger.info("target(income) 이진화 완료")
