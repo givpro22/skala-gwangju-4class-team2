@@ -9,6 +9,7 @@
 작 성 자   : 박영서 (SKALA 광주 4반 2조)
 변경 내역
   2026-07-21  박영서  최초 작성
+  2026-07-21  Minchae  Pydantic 스키마 기반 유효성 검사 추가 및 기존 결측치 탐지 방식 비교 추가
 ============================================================
 """
 
@@ -22,6 +23,7 @@ from typing import Any
 
 import pandas as pd
 import polars as pl
+from pydantic import ValidationError
 
 from src.config import (
     COLUMNS,
@@ -29,6 +31,7 @@ from src.config import (
     PROCESSED_FILE,
     RAW_FILE,
     TARGET,
+    AdultRecord,
     ensure_dirs,
     get_logger,
 )
@@ -204,7 +207,7 @@ def compare_loaders(
 
 
 # ------------------------------------------------------------------
-# 2. Transform — 결측치 · 중복 처리
+# 3. Transform — 결측치 · 중복 처리
 # ------------------------------------------------------------------
 def basic_eda(df: pd.DataFrame) -> dict[str, Any]:
     """기본 EDA 결과(행/열 수, 결측 현황, 타깃 분포 등)를 dict로 정리한다."""
@@ -231,6 +234,91 @@ def basic_eda(df: pd.DataFrame) -> dict[str, Any]:
         len(eda["null_counts"]),
     )
     return eda
+
+# ------------------------------------------------------------------
+# 2. Validate — Pydantic 스키마 기반 유효성 검사
+#    config.AdultRecord 스키마에 없는 값(결측치 '?', 오탈자 등)이 있으면
+#    Literal/int 검증에 실패하므로, 그 행을 자동으로 걸러낸다(Drop).
+# ------------------------------------------------------------------
+def validate_schema(df: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """행 단위로 AdultRecord 스키마를 검증해 유효한 행만 남긴다.
+
+    처리 순서
+      1) 문자열 컬럼 양쪽 공백 제거
+         (na_values 변환 이전에 원본에 남아있는 ' ?' 같은 값도 대응)
+      2) 각 행을 dict로 변환해 AdultRecord(**row) 로 검증
+         - 스키마에 정의되지 않은 값(예: '?', NaN)이나 타입 불일치는
+           pydantic.ValidationError 를 발생시킨다
+         - 검증에 실패한 행은 그대로 버린다(Drop)
+
+    Args:
+        df: 검증 대상 DataFrame (원본 컬럼명 그대로, 하이픈 포함).
+
+    Returns:
+        (검증을 통과한 DataFrame, 걸러진 행 수)
+    """
+    out = df.copy()
+
+    # 1) 양쪽 공백 제거
+    str_cols = out.select_dtypes(include="object").columns
+    out[str_cols] = out[str_cols].apply(lambda s: s.str.strip())
+
+    # 2) 행 단위 스키마 검증
+    is_valid: list[bool] = []
+    for row in out.to_dict(orient="records"):
+        try:
+            AdultRecord.model_validate(row)
+        except ValidationError:
+            is_valid.append(False)
+        else:
+            is_valid.append(True)
+
+    validated = out[is_valid].reset_index(drop=True)
+    n_dropped = len(out) - len(validated)
+    logger.info(
+        "스키마 검증 | 입력 %d행 중 %d행 통과, %d행 제외(Drop)",
+        len(out),
+        len(validated),
+        n_dropped,
+    )
+    return validated, n_dropped
+
+
+def compare_missing_detection(df: pd.DataFrame) -> dict[str, Any]:
+    """기존 방식과 신규(Pydantic 스키마) 방식의 결측치 탐지 결과를 비교한다.
+
+    - 기존 방식: pandas `isna()` 로 결측치가 하나라도 있는 행(row) 수를 센다.
+      (`load_with_pandas` 의 na_values=["?", " ?"] 변환에 의존하는,
+       `basic_eda`/`compare_loaders` 와 같은 결측치 판단 기준)
+    - 신규 방식: `validate_schema()` 로 스키마 검증에 실패해 걸러지는 행 수를 센다.
+      ('?' 뿐 아니라 스키마에 없는 값·타입 불일치까지 함께 걸러낸다)
+
+    결측 '값(cell)' 개수가 아니라 결측 '행' 개수로 맞춰 비교해야
+    두 방식이 동일한 기준을 쓰는지 확인할 수 있다
+    (한 행에 결측이 여러 개면 값 개수는 행 개수보다 커지기 때문).
+
+    Args:
+        df: 비교 대상 DataFrame (원본 컬럼명 그대로, 하이픈 포함).
+
+    Returns:
+        {legacy_missing_rows, schema_dropped_rows, match} 요약 dict.
+    """
+    legacy_missing_rows = int(df.isna().any(axis=1).sum())
+    _, schema_dropped_rows = validate_schema(df)
+    match = legacy_missing_rows == schema_dropped_rows
+
+    logger.info(
+        "결측치 탐지 비교 | 기존 방식(isna) %d행 vs 신규 방식(schema) %d행 → %s",
+        legacy_missing_rows,
+        schema_dropped_rows,
+        "차이 없음(일치)" if match else "차이 있음(불일치)",
+    )
+    return {
+        "legacy_missing_rows": legacy_missing_rows,
+        "schema_dropped_rows": schema_dropped_rows,
+        "match": match,
+    }
+
 
 
 def categorical_profile(df: pd.DataFrame, top_n: int = 3) -> list[dict[str, Any]]:

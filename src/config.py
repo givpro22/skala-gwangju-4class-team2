@@ -7,6 +7,7 @@
 작 성 자   : 박영서 (SKALA 광주 4반 2조)
 변경 내역
   2026-07-21  박영서  최초 작성
+  2026-07-21  Minchae  Pydantic 기반 데이터 검증 스키마(AdultRecord) 추가
 ============================================================
 """
 
@@ -16,6 +17,9 @@ import logging
 import sys
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 # ------------------------------------------------------------------
 # 1. 경로 상수 — 프로젝트 루트 기준 절대 경로로 관리한다.
@@ -86,6 +90,167 @@ CATEGORICAL_FEATURES: list[str] = [
 ]
 
 RANDOM_STATE: int = 42  # 재현성 확보용 시드
+
+# ------------------------------------------------------------------
+# 3. 데이터 검증 스키마 — Adult Census Income 컬럼별 값/범위 정의
+#    UCI 데이터셋 설명에 명시된 범주값을 typing.Literal 로 그대로 옮겨,
+#    스키마에 없는 값(결측치 '?', 오탈자 등)이 들어오면 Pydantic이
+#    ValidationError 를 발생시키도록 한다. (clean.py 는 이 예외를 이용해
+#    해당 행을 필터링(Drop)한다)
+# ------------------------------------------------------------------
+WorkClass = Literal[
+    "Private",
+    "Self-emp-not-inc",
+    "Self-emp-inc",
+    "Federal-gov",
+    "Local-gov",
+    "State-gov",
+    "Without-pay",
+    "Never-worked",
+]
+
+Education = Literal[
+    "Bachelors",
+    "Some-college",
+    "11th",
+    "HS-grad",
+    "Prof-school",
+    "Assoc-acdm",
+    "Assoc-voc",
+    "9th",
+    "7th-8th",
+    "12th",
+    "Masters",
+    "1st-4th",
+    "10th",
+    "Doctorate",
+    "5th-6th",
+    "Preschool",
+]
+
+MaritalStatus = Literal[
+    "Married-civ-spouse",
+    "Divorced",
+    "Never-married",
+    "Separated",
+    "Widowed",
+    "Married-spouse-absent",
+    "Married-AF-spouse",
+]
+
+Occupation = Literal[
+    "Tech-support",
+    "Craft-repair",
+    "Other-service",
+    "Sales",
+    "Exec-managerial",
+    "Prof-specialty",
+    "Handlers-cleaners",
+    "Machine-op-inspct",
+    "Adm-clerical",
+    "Farming-fishing",
+    "Transport-moving",
+    "Priv-house-serv",
+    "Protective-serv",
+    "Armed-Forces",
+]
+
+Relationship = Literal[
+    "Wife",
+    "Own-child",
+    "Husband",
+    "Not-in-family",
+    "Other-relative",
+    "Unmarried",
+]
+
+Race = Literal[
+    "White",
+    "Asian-Pac-Islander",
+    "Amer-Indian-Eskimo",
+    "Other",
+    "Black",
+]
+
+Sex = Literal["Female", "Male"]
+
+NativeCountry = Literal[
+    "United-States",
+    "Cambodia",
+    "England",
+    "Puerto-Rico",
+    "Canada",
+    "Germany",
+    "Outlying-US(Guam-USVI-etc)",
+    "India",
+    "Japan",
+    "Greece",
+    "South",
+    "China",
+    "Cuba",
+    "Iran",
+    "Honduras",
+    "Philippines",
+    "Italy",
+    "Poland",
+    "Jamaica",
+    "Vietnam",
+    "Mexico",
+    "Portugal",
+    "Ireland",
+    "France",
+    "Dominican-Republic",
+    "Laos",
+    "Ecuador",
+    "Taiwan",
+    "Haiti",
+    "Columbia",
+    "Hungary",
+    "Guatemala",
+    "Nicaragua",
+    "Scotland",
+    "Thailand",
+    "Yugoslavia",
+    "El-Salvador",
+    "Trinadad&Tobago",
+    "Peru",
+    "Hong",
+    "Holand-Netherlands",
+]
+
+Income = Literal["<=50K", ">50K"]
+
+
+class AdultRecord(BaseModel):
+    """Adult Census Income 원본 한 행(row)의 검증 스키마.
+
+    - continuous 로 명시된 컬럼(age, fnlwgt, education-num, capital-gain,
+      capital-loss, hours-per-week)은 int 로 정의한다.
+    - 원본 컬럼명(하이픈 포함)은 Field(alias=...)로 매핑하고, 파이썬 필드명은
+      언더스코어 컨벤션(예: education_num)을 사용한다.
+    - populate_by_name=True 이므로 alias(원본 컬럼명)와 필드명 양쪽 모두로
+      인스턴스를 생성할 수 있다.
+    - 정의되지 않은 값(예: '?')이나 타입이 맞지 않는 값이 들어오면
+      Literal/int 검증에 실패해 pydantic.ValidationError 가 발생한다.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    age: int
+    workclass: WorkClass
+    fnlwgt: int
+    education: Education
+    education_num: int = Field(alias="education-num")
+    marital_status: MaritalStatus = Field(alias="marital-status")
+    occupation: Occupation
+    relationship: Relationship
+    race: Race
+    sex: Sex
+    capital_gain: int = Field(alias="capital-gain")
+    capital_loss: int = Field(alias="capital-loss")
+    hours_per_week: int = Field(alias="hours-per-week")
+    native_country: NativeCountry = Field(alias="native-country")
+    income: Income
 
 
 def ensure_dirs() -> None:
