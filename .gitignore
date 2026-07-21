@@ -1,0 +1,33 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- 가상환경 / 환경변수 ---
+.venv/
+venv/
+.env
+.env.local
+.env.production
+
+# --- 데이터 (원본은 git에 올리지 않고 출처만 README에 기록) ---
+data/raw/
+data/processed/
+data/external/
+
+# --- 산출물 ---
+outputs/models/
+outputs/figures/
+logs/
+
+# --- 노트북 ---
+.ipynb_checkpoints/
+
+# --- OS / IDE ---
+.DS_Store
+.idea/
+.vscode/
