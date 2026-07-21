@@ -7,6 +7,7 @@ import logging
 from src.data_loader import (
     clean_dataframes,
     create_visualizations,
+    generate_markdown_report,
     load_dataframes_from_url,
     run_basic_eda,
     run_statistical_analysis,
@@ -52,6 +53,7 @@ pandas_df, polars_df = load_dataframes_from_url(
 )
 
 if pandas_df is not None and polars_df is not None:
+    original_shape = pandas_df.shape
     pandas_df, polars_df = clean_dataframes(pandas_df, polars_df)
 
     print("Pandas DataFrame")
@@ -61,8 +63,17 @@ if pandas_df is not None and polars_df is not None:
     print(polars_df.head())
 
     run_basic_eda(pandas_df, polars_df)
-    run_statistical_analysis(pandas_df)
-    train_evaluate_save_model(pandas_df)
-    create_visualizations(pandas_df)
+    statistical_results = run_statistical_analysis(pandas_df)
+    ml_results = train_evaluate_save_model(pandas_df)
+    seaborn_files, plotly_files = create_visualizations(pandas_df)
+    report_path = generate_markdown_report(
+        dataframe=pandas_df,
+        statistical_results=statistical_results,
+        ml_results=ml_results,
+        seaborn_files=seaborn_files,
+        plotly_files=plotly_files,
+        original_shape=original_shape,
+    )
+    print(f"\n분석 보고서: {report_path.resolve()}")
 else:
     print("데이터를 불러오지 못했습니다.")
