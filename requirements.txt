@@ -1,25 +1,52 @@
-# SKALA 광주 4반 2조 - Day2 종합 실습 의존성
-# 설치: pip install -r requirements.txt  (Python 3.11 기준)
+# ============================================================
+# SKALA 광주 4반 2조 - 공통 의존성
+#
+# 설치 : pip install -r requirements.txt
+# 기준 : Python 3.9 이상 (팀원별 3.9 / 3.11 환경 모두 설치 가능하도록
+#        정확한 버전 고정(==) 대신 하한(>=) 으로 지정)
+#
+# 변경 내역
+#   2026-07-21  허진녕  pip freeze 기반 최초 작성
+#   2026-07-21  박영서  직접 의존성만 남기고 정리, 버전 범위로 통합
+# ============================================================
 
 # --- 데이터 처리 ---
-pandas==2.2.3
-polars==1.17.1
-pyarrow==18.1.0
-tabulate==0.9.0        # DataFrame -> 마크다운 표 변환(report.md 생성용)
+pandas>=2.2,<3
+polars>=1.17
+pyarrow>=17            # Parquet 입출력
+duckdb>=1.1            # 파일 직접 SQL 분석
+numpy>=1.26,<3
 
 # --- 시각화 ---
-matplotlib==3.9.3
-seaborn==0.13.2
-plotly==5.24.1
+matplotlib>=3.9
+seaborn>=0.13
+plotly>=5.24
+altair>=5.4            # 선언형 시각화
 
 # --- 통계 / 머신러닝 ---
-scipy==1.14.1
-scikit-learn==1.6.0
-joblib==1.4.2
+scipy>=1.13
+scikit-learn>=1.6
+joblib>=1.4
+
+# --- 수집 / 자동화 ---
+httpx>=0.28            # 비동기 HTTP 클라이언트
+jinja2>=3.1            # 리포트 템플릿
+schedule>=1.2          # 반복 작업 스케줄러
+tabulate>=0.9          # DataFrame -> 마크다운 표 (report.md 생성용)
 
 # --- 코드 품질 / 테스트 ---
-pytest==8.3.4
-ruff==0.8.4
+pytest>=8.3
+ruff>=0.8
 
 # --- 노트북(EDA) ---
-jupyter==1.1.1
+jupyter>=1.1
+
+# ------------------------------------------------------------
+# [제외한 항목]
+# 1) 전이 의존성(fonttools, kiwisolver, six, zipp, certifi 등)
+#    - 위 패키지 설치 시 자동으로 따라오므로 직접 명시하지 않음
+# 2) pathlib==1.0.1 / typing==3.7.4.3 / asyncio==4.0.0
+#    - 표준 라이브러리의 구버전 백포트 패키지.
+#      설치하면 stdlib 모듈을 가려서 오류를 유발하므로 제거함
+#      (pathlib, typing, asyncio 는 별도 설치 없이 import 가능)
+# ------------------------------------------------------------
