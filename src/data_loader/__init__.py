@@ -5,6 +5,7 @@ from src.data_loader.eda import run_polars_eda
 from src.data_loader.preprocessing import clean_dataframes
 from src.data_loader.preprocessing import clean_pandas_dataframe
 from src.data_loader.preprocessing import clean_polars_dataframe
+from src.data_loader.statistical_analysis import run_statistical_analysis
 from src.data_loader.url_loader import load_data_from_url
 from src.data_loader.visualization import create_visualizations
 
@@ -19,4 +20,5 @@ __all__ = [
     "run_basic_eda",
     "run_pandas_eda",
     "run_polars_eda",
+    "run_statistical_analysis",
 ]
