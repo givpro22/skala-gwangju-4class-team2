@@ -20,8 +20,8 @@ data/processed/
 data/external/
 
 # --- 산출물 ---
-outputs/models/
-outputs/figures/
+# outputs/ 는 제출 시 실행 결과를 확인할 수 있도록 추적한다.
+# (models/*.joblib 은 실행할 때마다 새로 학습되어 매번 변경됨)
 logs/
 
 # --- 노트북 ---
